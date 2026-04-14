@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ERP Tienda — {% block title %}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-icon">🏪</span>
+      <span class="brand-name">ERP Tienda</span>
+    </div>
+
+    <nav>
+      <a href="{{ url_for('dashboard') }}"   class="nav-item {% if request.endpoint=='dashboard'   %}active{% endif %}"><span class="ni">📊</span> Dashboard</a>
+      <a href="{{ url_for('ventas') }}"      class="nav-item {% if request.endpoint=='ventas'      %}active{% endif %}"><span class="ni">🧾</span> Ventas</a>
+      <a href="{{ url_for('inventario') }}"  class="nav-item {% if request.endpoint=='inventario'  %}active{% endif %}"><span class="ni">📦</span> Inventario</a>
+      <a href="{{ url_for('clientes') }}"    class="nav-item {% if request.endpoint=='clientes'    %}active{% endif %}"><span class="ni">👥</span> Clientes</a>
+      <a href="{{ url_for('proveedores') }}" class="nav-item {% if request.endpoint=='proveedores' %}active{% endif %}"><span class="ni">🏭</span> Proveedores</a>
+      <a href="{{ url_for('gastos') }}"      class="nav-item {% if request.endpoint=='gastos'      %}active{% endif %}"><span class="ni">💸</span> Gastos</a>
+      <a href="{{ url_for('reportes') }}"    class="nav-item {% if request.endpoint=='reportes'    %}active{% endif %}"><span class="ni">📈</span> Reportes</a>
+
+      {% if current_user.rol == 'admin' %}
+      <div class="nav-sep"></div>
+      <a href="{{ url_for('usuarios') }}"    class="nav-item {% if request.endpoint=='usuarios'    %}active{% endif %}"><span class="ni">🔑</span> Usuarios</a>
+      {% endif %}
+    </nav>
+
+    <!-- Usuario en la parte inferior -->
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar">{{ current_user.nombre[0] | upper }}</div>
+        <div class="user-details">
+          <div class="user-name">{{ current_user.nombre }}</div>
+          <div class="user-role">
+            {% if current_user.rol == 'admin' %}👑 Admin{% else %}👁 Lectura{% endif %}
+          </div>
+        </div>
+      </div>
+      <a href="{{ url_for('logout') }}" class="btn-logout" title="Cerrar sesión">⏻</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    {% if not can_edit %}
+    <div class="readonly-banner">
+      👁 Modo solo lectura — tu cuenta no puede realizar cambios
+    </div>
+    {% endif %}
+    <div class="page-wrap">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

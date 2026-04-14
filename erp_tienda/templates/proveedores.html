@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Proveedores{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <h1 class="page-title">Proveedores</h1>
+  <button class="btn btn-primary" onclick="openModal('modal-proveedor')">+ Proveedor</button>
+</div>
+
+<div class="card p0">
+  <table>
+    <thead><tr><th>Empresa</th><th>Contacto</th><th>Teléfono</th><th>Email</th><th>Categoría</th><th>Estado</th><th></th></tr></thead>
+    <tbody>
+    {% if proveedores %}
+      {% for p in proveedores %}
+      <tr>
+        <td><strong>{{ p.empresa }}</strong></td>
+        <td>{{ p.contacto or '—' }}</td>
+        <td>{{ p.telefono or '—' }}</td>
+        <td>{{ p.email or '—' }}</td>
+        <td>{{ p.categoria or '—' }}</td>
+        <td><span class="badge {{ 'badge-green' if p.estado=='Activo' else 'badge-amber' }}">{{ p.estado }}</span></td>
+        <td>
+          <button class="btn btn-sm" onclick="editarProveedor({{ p.id }},'{{ p.empresa }}','{{ p.contacto }}','{{ p.telefono }}','{{ p.email }}','{{ p.categoria }}','{{ p.estado }}')">Editar</button>
+          <button class="btn btn-sm btn-danger" onclick="eliminarProveedor({{ p.id }})">Eliminar</button>
+        </td>
+      </tr>
+      {% endfor %}
+    {% else %}
+      <tr><td colspan="7" class="empty">Sin proveedores registrados</td></tr>
+    {% endif %}
+    </tbody>
+  </table>
+</div>
+
+<div class="modal-overlay" id="modal-proveedor">
+<div class="modal">
+  <div class="modal-title" id="titulo-proveedor">Nuevo proveedor</div>
+  <input type="hidden" id="pr-id">
+  <div class="form-grid">
+    <div class="form-group full"><label>Empresa</label><input type="text" id="pr-empresa"></div>
+    <div class="form-group"><label>Contacto</label><input type="text" id="pr-contacto"></div>
+    <div class="form-group"><label>Teléfono</label><input type="text" id="pr-tel"></div>
+    <div class="form-group"><label>Email</label><input type="email" id="pr-email"></div>
+    <div class="form-group"><label>Categoría</label><input type="text" id="pr-cat" placeholder="Textil, Alimentos..."></div>
+    <div class="form-group"><label>Estado</label><select id="pr-estado"><option>Activo</option><option>Inactivo</option></select></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn" onclick="closeModal('modal-proveedor')">Cancelar</button>
+    <button class="btn btn-primary" onclick="guardarProveedor()">Guardar</button>
+  </div>
+</div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+function editarProveedor(id, empresa, contacto, tel, email, cat, estado) {
+  document.getElementById('titulo-proveedor').textContent = 'Editar proveedor';
+  document.getElementById('pr-id').value = id;
+  document.getElementById('pr-empresa').value = empresa;
+  document.getElementById('pr-contacto').value = contacto;
+  document.getElementById('pr-tel').value = tel;
+  document.getElementById('pr-email').value = email;
+  document.getElementById('pr-cat').value = cat;
+  document.getElementById('pr-estado').value = estado;
+  openModal('modal-proveedor');
+}
+
+async function guardarProveedor() {
+  const empresa = document.getElementById('pr-empresa').value.trim();
+  if (!empresa) return showToast('Ingresa el nombre de la empresa', 'error');
+  const payload = {
+    id:       document.getElementById('pr-id').value || null,
+    empresa,
+    contacto: document.getElementById('pr-contacto').value,
+    telefono: document.getElementById('pr-tel').value,
+    email:    document.getElementById('pr-email').value,
+    categoria:document.getElementById('pr-cat').value,
+    estado:   document.getElementById('pr-estado').value
+  };
+  const r = await fetch('/proveedores/guardar', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+  const d = await r.json();
+  if (d.ok) { showToast('Proveedor guardado'); closeModal('modal-proveedor'); location.reload(); }
+}
+
+async function eliminarProveedor(id) {
+  if (!confirm('¿Eliminar este proveedor?')) return;
+  const r = await fetch('/proveedores/eliminar/' + id, { method:'DELETE' });
+  const d = await r.json();
+  if (d.ok) { showToast('Proveedor eliminado'); location.reload(); }
+}
+</script>
+{% endblock %}

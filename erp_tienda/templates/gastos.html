@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Gastos{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <h1 class="page-title">Gastos</h1>
+  <button class="btn btn-primary" onclick="openModal('modal-gasto')">+ Gasto</button>
+</div>
+
+<div class="card p0">
+  <table>
+    <thead><tr><th>Fecha</th><th>Descripción</th><th>Categoría</th><th>Monto</th><th>Notas</th><th></th></tr></thead>
+    <tbody>
+    {% if gastos %}
+      {% for g in gastos %}
+      <tr>
+        <td>{{ g.fecha }}</td>
+        <td>{{ g.descripcion }}</td>
+        <td><span class="badge badge-amber">{{ g.categoria }}</span></td>
+        <td>${{ "{:,.0f}".format(g.monto) }}</td>
+        <td>{{ g.notas or '—' }}</td>
+        <td>
+          <button class="btn btn-sm btn-danger" onclick="eliminarGasto({{ g.id }})">Eliminar</button>
+        </td>
+      </tr>
+      {% endfor %}
+    {% else %}
+      <tr><td colspan="6" class="empty">Sin gastos registrados</td></tr>
+    {% endif %}
+    </tbody>
+  </table>
+</div>
+
+<div class="modal-overlay" id="modal-gasto">
+<div class="modal">
+  <div class="modal-title">Registrar gasto</div>
+  <div class="form-grid">
+    <div class="form-group full"><label>Descripción</label><input type="text" id="g-desc"></div>
+    <div class="form-group">
+      <label>Categoría</label>
+      <select id="g-cat">
+        <option>Arriendo</option><option>Servicios</option><option>Nómina</option>
+        <option>Compra inventario</option><option>Transporte</option><option>Marketing</option><option>Otros</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Monto</label><input type="number" id="g-monto" min="0"></div>
+    <div class="form-group"><label>Fecha</label><input type="date" id="g-fecha"></div>
+    <div class="form-group full"><label>Notas</label><input type="text" id="g-notas" placeholder="Opcional"></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn" onclick="closeModal('modal-gasto')">Cancelar</button>
+    <button class="btn btn-primary" onclick="guardarGasto()">Guardar</button>
+  </div>
+</div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('g-fecha').value = new Date().toISOString().slice(0,10);
+
+async function guardarGasto() {
+  const desc  = document.getElementById('g-desc').value.trim();
+  const monto = parseFloat(document.getElementById('g-monto').value) || 0;
+  if (!desc || !monto) return showToast('Completa descripción y monto', 'error');
+  const payload = {
+    descripcion: desc,
+    categoria:   document.getElementById('g-cat').value,
+    monto,
+    fecha:       document.getElementById('g-fecha').value,
+    notas:       document.getElementById('g-notas').value
+  };
+  const r = await fetch('/gastos/guardar', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+  const d = await r.json();
+  if (d.ok) { showToast('Gasto guardado'); closeModal('modal-gasto'); location.reload(); }
+}
+
+async function eliminarGasto(id) {
+  if (!confirm('¿Eliminar este gasto?')) return;
+  const r = await fetch('/gastos/eliminar/' + id, { method:'DELETE' });
+  const d = await r.json();
+  if (d.ok) { showToast('Gasto eliminado'); location.reload(); }
+}
+</script>
+{% endblock %}

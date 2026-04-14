@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Reportes{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <h1 class="page-title">Reportes — {{ mes }}</h1>
+</div>
+
+<div class="two-col">
+  <div class="card">
+    <div class="card-title">Ventas por categoría</div>
+    {% if ventas_cat %}
+      {% set max_vc = ventas_cat[0].total %}
+      {% for r in ventas_cat %}
+      <div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px">
+          <span>{{ r.categoria or 'Sin categoría' }}</span>
+          <span>${{ "{:,.0f}".format(r.total) }}</span>
+        </div>
+        <div style="height:6px;background:var(--color-bg-secondary);border-radius:3px">
+          <div style="height:100%;width:{{ (r.total/max_vc*100)|int }}%;background:#378ADD;border-radius:3px"></div>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <p class="empty">Sin datos este mes</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-title">Gastos por tipo</div>
+    {% if gastos_cat %}
+      {% set max_gc = gastos_cat[0].total %}
+      {% for r in gastos_cat %}
+      <div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px">
+          <span>{{ r.categoria }}</span>
+          <span>${{ "{:,.0f}".format(r.total) }}</span>
+        </div>
+        <div style="height:6px;background:var(--color-bg-secondary);border-radius:3px">
+          <div style="height:100%;width:{{ (r.total/max_gc*100)|int }}%;background:#E24B4A;border-radius:3px"></div>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <p class="empty">Sin datos este mes</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card" style="margin-top:12px">
+  <div class="card-title">Top productos más vendidos</div>
+  {% if top_productos %}
+    {% set max_p = top_productos[0].cant %}
+    <table>
+      <thead><tr><th>Producto</th><th>Unidades</th><th>Ingresos</th><th></th></tr></thead>
+      <tbody>
+      {% for p in top_productos %}
+      <tr>
+        <td>{{ p.nombre }}</td>
+        <td>{{ p.cant }}</td>
+        <td>${{ "{:,.0f}".format(p.revenue) }}</td>
+        <td style="width:200px">
+          <div style="height:6px;background:var(--color-bg-secondary);border-radius:3px">
+            <div style="height:100%;width:{{ (p.cant/max_p*100)|int }}%;background:#1D9E75;border-radius:3px"></div>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">Sin datos este mes</p>
+  {% endif %}
+</div>
+
+<div class="card" style="margin-top:12px">
+  <div class="card-title">Ventas diarias del mes</div>
+  {% if ventas_diarias %}
+    <table>
+      <thead><tr><th>Fecha</th><th>Total</th></tr></thead>
+      <tbody>
+      {% for v in ventas_diarias %}
+      <tr><td>{{ v.fecha }}</td><td>${{ "{:,.0f}".format(v.total) }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">Sin ventas este mes</p>
+  {% endif %}
+</div>
+
+{% endblock %}

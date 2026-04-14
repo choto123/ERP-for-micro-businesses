@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Usuarios{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <h1 class="page-title">Gestión de usuarios</h1>
+  <button class="btn btn-primary" onclick="abrirNuevo()">+ Nuevo usuario</button>
+</div>
+
+<div class="card p0">
+  <table>
+    <thead>
+      <tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Estado</th><th>Creado</th><th></th></tr>
+    </thead>
+    <tbody>
+    {% for u in users %}
+    <tr>
+      <td><code style="font-size:13px">{{ u.username }}</code></td>
+      <td>{{ u.nombre }}</td>
+      <td>
+        {% if u.rol == 'admin' %}
+          <span class="badge badge-blue">👑 Administrador</span>
+        {% else %}
+          <span class="badge badge-green">👁 Solo lectura</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if u.activo %}
+          <span class="badge badge-green">Activo</span>
+        {% else %}
+          <span class="badge badge-red">Bloqueado</span>
+        {% endif %}
+      </td>
+      <td>{{ u.creado_en or '—' }}</td>
+      <td>
+        <button class="btn btn-sm" onclick="editarUsuario({{ u.id }},'{{ u.username }}','{{ u.nombre }}','{{ u.rol }}',{{ u.activo }})">Editar</button>
+        {% if u.id != current_user.id %}
+        <button class="btn btn-sm btn-danger" onclick="eliminarUsuario({{ u.id }}, '{{ u.nombre }}')">Eliminar</button>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Leyenda de roles -->
+<div class="two-col" style="margin-top:12px">
+  <div class="card">
+    <div class="card-title">👑 Administrador</div>
+    <p style="font-size:13px;color:var(--color-text-muted,#666);line-height:1.6">
+      Acceso completo: puede ver, crear, editar y eliminar en todos los módulos.
+      También puede gestionar usuarios.
+    </p>
+  </div>
+  <div class="card">
+    <div class="card-title">👁 Solo lectura</div>
+    <p style="font-size:13px;color:var(--color-text-muted,#666);line-height:1.6">
+      Puede ver todos los módulos (dashboard, ventas, inventario, etc.)
+      pero los botones de crear / editar / eliminar están desactivados.
+    </p>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-usuario">
+<div class="modal">
+  <div class="modal-title" id="titulo-usuario">Nuevo usuario</div>
+  <input type="hidden" id="u-id">
+  <div class="form-grid">
+    <div class="form-group"><label>Usuario (login)</label><input type="text" id="u-username" placeholder="ej: maria123"></div>
+    <div class="form-group"><label>Nombre completo</label><input type="text" id="u-nombre" placeholder="ej: María López"></div>
+    <div class="form-group">
+      <label>Rol</label>
+      <select id="u-rol">
+        <option value="viewer">👁 Solo lectura</option>
+        <option value="admin">👑 Administrador</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Estado</label>
+      <select id="u-activo">
+        <option value="1">Activo</option>
+        <option value="0">Bloqueado</option>
+      </select>
+    </div>
+    <div class="form-group full">
+      <label>Contraseña <span id="pw-hint" style="color:#aaa;font-weight:400">(dejar vacío para no cambiar)</span></label>
+      <input type="password" id="u-password" placeholder="••••••••">
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn" onclick="closeModal('modal-usuario')">Cancelar</button>
+    <button class="btn btn-primary" onclick="guardarUsuario()">Guardar</button>
+  </div>
+</div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+function abrirNuevo() {
+  document.getElementById('titulo-usuario').textContent = 'Nuevo usuario';
+  document.getElementById('u-id').value = '';
+  document.getElementById('u-username').value = '';
+  document.getElementById('u-nombre').value = '';
+  document.getElementById('u-rol').value = 'viewer';
+  document.getElementById('u-activo').value = '1';
+  document.getElementById('u-password').value = '';
+  document.getElementById('pw-hint').style.display = 'none';
+  openModal('modal-usuario');
+}
+
+function editarUsuario(id, username, nombre, rol, activo) {
+  document.getElementById('titulo-usuario').textContent = 'Editar usuario';
+  document.getElementById('u-id').value = id;
+  document.getElementById('u-username').value = username;
+  document.getElementById('u-nombre').value = nombre;
+  document.getElementById('u-rol').value = rol;
+  document.getElementById('u-activo').value = activo ? '1' : '0';
+  document.getElementById('u-password').value = '';
+  document.getElementById('pw-hint').style.display = 'inline';
+  openModal('modal-usuario');
+}
+
+async function guardarUsuario() {
+  const username = document.getElementById('u-username').value.trim();
+  const nombre   = document.getElementById('u-nombre').value.trim();
+  if (!username || !nombre) return showToast('Usuario y nombre son requeridos', 'error');
+  const payload = {
+    id:       document.getElementById('u-id').value || null,
+    username,
+    nombre,
+    rol:      document.getElementById('u-rol').value,
+    activo:   document.getElementById('u-activo').value,
+    password: document.getElementById('u-password').value,
+  };
+  const r = await fetch('/usuarios/guardar', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+  const d = await r.json();
+  if (d.ok) { showToast('Usuario guardado'); closeModal('modal-usuario'); location.reload(); }
+  else showToast(d.error || 'Error', 'error');
+}
+
+async function eliminarUsuario(id, nombre) {
+  if (!confirm(`¿Eliminar al usuario "${nombre}"?`)) return;
+  const r = await fetch('/usuarios/eliminar/' + id, { method: 'DELETE' });
+  const d = await r.json();
+  if (d.ok) { showToast('Usuario eliminado'); location.reload(); }
+  else showToast(d.error || 'Error', 'error');
+}
+</script>
+{% endblock %}

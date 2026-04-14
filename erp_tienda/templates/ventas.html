@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}Ventas{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <h1 class="page-title">Ventas</h1>
+  <button class="btn btn-primary" onclick="openModal('modal-venta')">+ Nueva venta</button>
+</div>
+
+<div class="card p0">
+  <table>
+    <thead><tr><th>#</th><th>Fecha</th><th>Cliente</th><th>Total</th><th>Pago</th><th>Estado</th></tr></thead>
+    <tbody>
+    {% if ventas %}
+      {% for v in ventas %}
+      <tr>
+        <td>#{{ v.id }}</td>
+        <td>{{ v.fecha }}</td>
+        <td>{{ v.cliente }}</td>
+        <td>${{ "{:,.0f}".format(v.total) }}</td>
+        <td>{{ v.pago }}</td>
+        <td><span class="badge {{ 'badge-green' if v.estado=='Pagado' else 'badge-amber' if v.estado=='Pendiente' else 'badge-blue' }}">{{ v.estado }}</span></td>
+      </tr>
+      {% endfor %}
+    {% else %}
+      <tr><td colspan="6" class="empty">Sin ventas registradas</td></tr>
+    {% endif %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Modal nueva venta -->
+<div class="modal-overlay" id="modal-venta">
+<div class="modal" style="width:520px">
+  <div class="modal-title">Nueva venta</div>
+  <div class="form-grid">
+    <div class="form-group">
+      <label>Cliente</label>
+      <select id="v-cliente">
+        <option value="">— Consumidor final —</option>
+        {% for c in clientes %}<option value="{{ c.id }}">{{ c.nombre }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Fecha</label>
+      <input type="date" id="v-fecha">
+    </div>
+  </div>
+
+  <div style="margin-top:14px">
+    <p class="section-sub">Agregar producto</p>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <select id="v-producto" style="flex:2">
+        <option value="">Seleccionar producto...</option>
+        {% for p in productos %}<option value="{{ p.id }}" data-precio="{{ p.precio }}" data-nombre="{{ p.nombre }}">{{ p.nombre }} — ${{ "{:,.0f}".format(p.precio) }}</option>{% endfor %}
+      </select>
+      <input type="number" id="v-cant" value="1" min="1" style="width:70px" placeholder="Cant.">
+      <button class="btn" onclick="agregarItem()">Agregar</button>
+    </div>
+    <table id="items-table">
+      <thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Subtotal</th><th></th></tr></thead>
+      <tbody id="items-body"><tr><td colspan="5" class="empty">Sin items</td></tr></tbody>
+    </table>
+    <div style="text-align:right;font-weight:500;font-size:15px;margin-top:8px">
+      Total: <span id="v-total">$0</span>
+    </div>
+  </div>
+
+  <div class="form-grid" style="margin-top:12px">
+    <div class="form-group">
+      <label>Método de pago</label>
+      <select id="v-pago"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>Crédito</option></select>
+    </div>
+    <div class="form-group">
+      <label>Estado</label>
+      <select id="v-estado"><option>Pagado</option><option>Pendiente</option><option>Crédito</option></select>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn" onclick="closeModal('modal-venta')">Cancelar</button>
+    <button class="btn btn-primary" onclick="guardarVenta()">Guardar venta</button>
+  </div>
+</div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+let ventaItems = [];
+
+document.getElementById('v-fecha').value = new Date().toISOString().slice(0,10);
+
+function agregarItem() {
+  const sel = document.getElementById('v-producto');
+  const pid = sel.value;
+  if (!pid) return;
+  const opt = sel.options[sel.selectedIndex];
+  const precio = parseFloat(opt.dataset.precio);
+  const nombre = opt.dataset.nombre;
+  const cant   = parseInt(document.getElementById('v-cant').value) || 1;
+  const exist  = ventaItems.find(i => i.pid == pid);
+  if (exist) { exist.cant += cant; } else { ventaItems.push({ pid, nombre, cant, precio }); }
+  renderItems();
+}
+
+function renderItems() {
+  const tbody = document.getElementById('items-body');
+  if (!ventaItems.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">Sin items</td></tr>'; document.getElementById('v-total').textContent = '$0'; return; }
+  tbody.innerHTML = ventaItems.map((i, idx) =>
+    `<tr><td>${i.nombre}</td>
+    <td><input type="number" value="${i.cant}" min="1" style="width:60px" onchange="ventaItems[${idx}].cant=+this.value;recalc()"></td>
+    <td>$${i.precio.toLocaleString('es-CO')}</td>
+    <td>$${(i.precio*i.cant).toLocaleString('es-CO')}</td>
+    <td><button class="btn btn-sm btn-danger" onclick="ventaItems.splice(${idx},1);renderItems()">✕</button></td></tr>`
+  ).join('');
+  recalc();
+}
+
+function recalc() {
+  const t = ventaItems.reduce((s,i) => s + i.precio*i.cant, 0);
+  document.getElementById('v-total').textContent = '$' + t.toLocaleString('es-CO');
+}
+
+async function guardarVenta() {
+  if (!ventaItems.length) return showToast('Agrega al menos un producto', 'error');
+  const payload = {
+    cliente_id: document.getElementById('v-cliente').value,
+    fecha:  document.getElementById('v-fecha').value,
+    pago:   document.getElementById('v-pago').value,
+    estado: document.getElementById('v-estado').value,
+    items:  ventaItems
+  };
+  const r = await fetch('/ventas/nueva', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+  const d = await r.json();
+  if (d.ok) { showToast('Venta guardada'); closeModal('modal-venta'); ventaItems = []; location.reload(); }
+  else showToast(d.error || 'Error', 'error');
+}
+</script>
+{% endblock %}

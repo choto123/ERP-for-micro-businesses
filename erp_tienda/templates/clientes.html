@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Clientes{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <h1 class="page-title">Clientes</h1>
+  <button class="btn btn-primary" onclick="openModal('modal-cliente')">+ Cliente</button>
+</div>
+
+<div class="card p0">
+  <table>
+    <thead><tr><th>Nombre</th><th>Teléfono</th><th>Email</th><th>Tipo</th><th>Total compras</th><th>Última compra</th><th></th></tr></thead>
+    <tbody>
+    {% if clientes %}
+      {% for c in clientes %}
+      <tr>
+        <td><strong>{{ c.nombre }}</strong></td>
+        <td>{{ c.telefono or '—' }}</td>
+        <td>{{ c.email or '—' }}</td>
+        <td><span class="badge badge-blue">{{ c.tipo }}</span></td>
+        <td>${{ "{:,.0f}".format(c.total_compras or 0) }}</td>
+        <td>{{ c.ultima_compra or '—' }}</td>
+        <td>
+          <button class="btn btn-sm" onclick="editarCliente({{ c.id }},'{{ c.nombre }}','{{ c.telefono }}','{{ c.email }}','{{ c.direccion }}','{{ c.tipo }}')">Editar</button>
+          <button class="btn btn-sm btn-danger" onclick="eliminarCliente({{ c.id }})">Eliminar</button>
+        </td>
+      </tr>
+      {% endfor %}
+    {% else %}
+      <tr><td colspan="7" class="empty">Sin clientes registrados</td></tr>
+    {% endif %}
+    </tbody>
+  </table>
+</div>
+
+<div class="modal-overlay" id="modal-cliente">
+<div class="modal">
+  <div class="modal-title" id="titulo-cliente">Nuevo cliente</div>
+  <input type="hidden" id="c-id">
+  <div class="form-grid">
+    <div class="form-group full"><label>Nombre completo</label><input type="text" id="c-nombre"></div>
+    <div class="form-group"><label>Teléfono</label><input type="text" id="c-tel"></div>
+    <div class="form-group"><label>Email</label><input type="email" id="c-email"></div>
+    <div class="form-group full"><label>Dirección</label><input type="text" id="c-dir"></div>
+    <div class="form-group"><label>Tipo</label><select id="c-tipo"><option>Regular</option><option>VIP</option><option>Mayorista</option></select></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn" onclick="closeModal('modal-cliente')">Cancelar</button>
+    <button class="btn btn-primary" onclick="guardarCliente()">Guardar</button>
+  </div>
+</div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+function editarCliente(id, nombre, tel, email, dir, tipo) {
+  document.getElementById('titulo-cliente').textContent = 'Editar cliente';
+  document.getElementById('c-id').value = id;
+  document.getElementById('c-nombre').value = nombre;
+  document.getElementById('c-tel').value = tel;
+  document.getElementById('c-email').value = email;
+  document.getElementById('c-dir').value = dir;
+  document.getElementById('c-tipo').value = tipo;
+  openModal('modal-cliente');
+}
+
+async function guardarCliente() {
+  const nombre = document.getElementById('c-nombre').value.trim();
+  if (!nombre) return showToast('Ingresa el nombre', 'error');
+  const payload = {
+    id:        document.getElementById('c-id').value || null,
+    nombre,
+    telefono:  document.getElementById('c-tel').value,
+    email:     document.getElementById('c-email').value,
+    direccion: document.getElementById('c-dir').value,
+    tipo:      document.getElementById('c-tipo').value
+  };
+  const r = await fetch('/clientes/guardar', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+  const d = await r.json();
+  if (d.ok) { showToast('Cliente guardado'); closeModal('modal-cliente'); location.reload(); }
+}
+
+async function eliminarCliente(id) {
+  if (!confirm('¿Eliminar este cliente?')) return;
+  const r = await fetch('/clientes/eliminar/' + id, { method:'DELETE' });
+  const d = await r.json();
+  if (d.ok) { showToast('Cliente eliminado'); location.reload(); }
+}
+</script>
+{% endblock %}

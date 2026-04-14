@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <h1 class="page-title">Dashboard</h1>
+  <span class="page-sub">{{ hoy }}</span>
+</div>
+
+<div class="metric-grid">
+  <div class="metric">
+    <div class="metric-label">Ventas hoy</div>
+    <div class="metric-value green">{{ "${:,.0f}".format(ventas_hoy) }}</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">Ventas del mes</div>
+    <div class="metric-value blue">{{ "${:,.0f}".format(ventas_mes) }}</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">Gastos del mes</div>
+    <div class="metric-value red">{{ "${:,.0f}".format(gastos_mes) }}</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">Utilidad del mes</div>
+    <div class="metric-value {{ 'green' if utilidad >= 0 else 'red' }}">{{ "${:,.0f}".format(utilidad) }}</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">Productos</div>
+    <div class="metric-value">{{ n_productos }}</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">Clientes</div>
+    <div class="metric-value">{{ n_clientes }}</div>
+  </div>
+</div>
+
+<div class="two-col">
+  <div class="card">
+    <div class="card-title">⚠ Stock bajo</div>
+    {% if stock_bajo %}
+      {% for p in stock_bajo %}
+      <div class="list-row">
+        <span>{{ p.nombre }}</span>
+        <span class="badge badge-red">{{ p.stock }} {{ p.unidad }}</span>
+      </div>
+      {% endfor %}
+    {% else %}
+      <p class="empty">Sin alertas de stock</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-title">Últimas ventas</div>
+    {% if ultimas_ventas %}
+      {% for v in ultimas_ventas %}
+      <div class="list-row">
+        <span>#{{ v.id }} — {{ v.cliente }}</span>
+        <span>${{ "{:,.0f}".format(v.total) }}
+          <span class="badge {{ 'badge-green' if v.estado=='Pagado' else 'badge-amber' if v.estado=='Pendiente' else 'badge-blue' }}">{{ v.estado }}</span>
+        </span>
+      </div>
+      {% endfor %}
+    {% else %}
+      <p class="empty">Sin ventas registradas</p>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Inventario{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <h1 class="page-title">Inventario</h1>
+  <button class="btn btn-primary" onclick="abrirProducto()">+ Producto</button>
+</div>
+
+<div class="card p0">
+  <table>
+    <thead><tr><th>Producto</th><th>Categoría</th><th>Precio</th><th>Costo</th><th>Stock</th><th>Estado</th><th></th></tr></thead>
+    <tbody>
+    {% if productos %}
+      {% for p in productos %}
+      <tr>
+        <td><strong>{{ p.nombre }}</strong></td>
+        <td>{{ p.categoria or '—' }}</td>
+        <td>${{ "{:,.0f}".format(p.precio) }}</td>
+        <td>${{ "{:,.0f}".format(p.costo) }}</td>
+        <td class="{{ 'stock-low' if p.stock <= p.stock_min else '' }}">{{ p.stock }} {{ p.unidad }}</td>
+        <td>
+          {% if p.stock <= p.stock_min %}
+            <span class="badge badge-red">Stock bajo</span>
+          {% else %}
+            <span class="badge badge-green">OK</span>
+          {% endif %}
+        </td>
+        <td>
+          <button class="btn btn-sm" onclick="editarProducto({{ p.id }},'{{ p.nombre }}','{{ p.categoria }}','{{ p.proveedor_id or '' }}',{{ p.precio }},{{ p.costo }},{{ p.stock }},{{ p.stock_min }},'{{ p.unidad }}')">Editar</button>
+          <button class="btn btn-sm btn-danger" onclick="eliminarProducto({{ p.id }})">Eliminar</button>
+        </td>
+      </tr>
+      {% endfor %}
+    {% else %}
+      <tr><td colspan="7" class="empty">Sin productos registrados</td></tr>
+    {% endif %}
+    </tbody>
+  </table>
+</div>
+
+<div class="modal-overlay" id="modal-producto">
+<div class="modal">
+  <div class="modal-title" id="titulo-producto">Nuevo producto</div>
+  <input type="hidden" id="p-id">
+  <div class="form-grid">
+    <div class="form-group full"><label>Nombre</label><input type="text" id="p-nombre"></div>
+    <div class="form-group"><label>Categoría</label><input type="text" id="p-cat"></div>
+    <div class="form-group">
+      <label>Proveedor</label>
+      <select id="p-proveedor">
+        <option value="">— Ninguno —</option>
+        {% for pr in proveedores %}<option value="{{ pr.id }}">{{ pr.empresa }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="form-group"><label>Precio de venta</label><input type="number" id="p-precio" min="0"></div>
+    <div class="form-group"><label>Costo</label><input type="number" id="p-costo" min="0"></div>
+    <div class="form-group"><label>Stock actual</label><input type="number" id="p-stock" min="0"></div>
+    <div class="form-group"><label>Stock mínimo</label><input type="number" id="p-min" min="0" value="5"></div>
+    <div class="form-group"><label>Unidad</label><input type="text" id="p-unidad" placeholder="und, kg, lt..."></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn" onclick="closeModal('modal-producto')">Cancelar</button>
+    <button class="btn btn-primary" onclick="guardarProducto()">Guardar</button>
+  </div>
+</div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+function abrirProducto() {
+  document.getElementById('titulo-producto').textContent = 'Nuevo producto';
+  ['p-id','p-nombre','p-cat','p-precio','p-costo','p-stock','p-unidad'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('p-min').value = 5;
+  document.getElementById('p-proveedor').value = '';
+  openModal('modal-producto');
+}
+
+function editarProducto(id, nombre, cat, prov, precio, costo, stock, min, unidad) {
+  document.getElementById('titulo-producto').textContent = 'Editar producto';
+  document.getElementById('p-id').value = id;
+  document.getElementById('p-nombre').value = nombre;
+  document.getElementById('p-cat').value = cat;
+  document.getElementById('p-proveedor').value = prov;
+  document.getElementById('p-precio').value = precio;
+  document.getElementById('p-costo').value = costo;
+  document.getElementById('p-stock').value = stock;
+  document.getElementById('p-min').value = min;
+  document.getElementById('p-unidad').value = unidad;
+  openModal('modal-producto');
+}
+
+async function guardarProducto() {
+  const nombre = document.getElementById('p-nombre').value.trim();
+  if (!nombre) return showToast('Ingresa el nombre', 'error');
+  const payload = {
+    id:          document.getElementById('p-id').value || null,
+    nombre,
+    categoria:   document.getElementById('p-cat').value,
+    proveedor_id:document.getElementById('p-proveedor').value || null,
+    precio:      document.getElementById('p-precio').value,
+    costo:       document.getElementById('p-costo').value,
+    stock:       document.getElementById('p-stock').value,
+    stock_min:   document.getElementById('p-min').value,
+    unidad:      document.getElementById('p-unidad').value || 'und'
+  };
+  const r = await fetch('/inventario/guardar', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+  const d = await r.json();
+  if (d.ok) { showToast('Producto guardado'); closeModal('modal-producto'); location.reload(); }
+}
+
+async function eliminarProducto(id) {
+  if (!confirm('¿Eliminar este producto?')) return;
+  const r = await fetch('/inventario/eliminar/' + id, { method:'DELETE' });
+  const d = await r.json();
+  if (d.ok) { showToast('Producto eliminado'); location.reload(); }
+}
+</script>
+{% endblock %}
